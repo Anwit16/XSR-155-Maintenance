@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XSR 155 — Maintenance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0a0a0b;
+    --card:      #141416;
+    --raised:    #1c1c1f;
+    --border:    #242428;
+    --silver:    #b8bec7;
+    --silver-dim:#b8bec712;
+    --red:       #c8102e;
+    --red-dim:   #c8102e1a;
+    --amber:     #d4820a;
+    --amber-dim: #d4820a1a;
+    --green:     #2d7d4f;
+    --green-dim: #2d7d4f1a;
+    --text:      #e2e4e8;
+    --muted:     #5a5d66;
+    --dim:       #8a8d96;
+    --r:         8px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .top-bar {
+    border-bottom: 1px solid var(--border);
+    padding: 18px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand-model { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 0.06em; }
+  .brand-tag { font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .y-mark { width: 28px; height: 28px; opacity: 0.75; }
+
+  .cluster-wrap { padding: 28px 24px 24px; border-bottom: 1px solid var(--border); }
+  .cluster-label { font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  .cluster {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 20px 16px;
+    position: relative; overflow: hidden;
+  }
+  .cluster::before {
+    content: ''; position: absolute; inset: 0;
+    background: repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,0.011) 3px,rgba(255,255,255,0.011) 4px);
+    pointer-events: none; border-radius: 12px;
+  }
+  .cluster-inner { display: flex; align-items: stretch; gap: 14px; }
+  .odo-wrap { flex: 1; }
+  .odo-input {
+    width: 100%; background: transparent; border: none; outline: none;
+    font-family: 'Bebas Neue', sans-serif; font-size: 60px;
+    letter-spacing: 0.04em; color: var(--silver); line-height: 1; padding: 0;
+    -moz-appearance: textfield; caret-color: var(--silver);
+  }
+  .odo-input::-webkit-outer-spin-button,
+  .odo-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .odo-input::placeholder { color: #22242a; }
+  .odo-unit { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-top: 5px; }
+  .cluster-div { width: 1px; background: var(--border); }
+  .log-btn {
+    background: var(--red); color: #fff; border: none; border-radius: 7px;
+    font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    padding: 0 18px; cursor: pointer; align-self: center;
+    transition: background 0.13s, transform 0.1s; flex-shrink: 0;
+  }
+  .log-btn:hover { background: #a50d26; }
+  .log-btn:active { transform: scale(0.96); }
+
+  .hist-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+  .hist-pill {
+    background: var(--raised); border: 1px solid var(--border); border-radius: 5px;
+    padding: 5px 10px; font-size: 12px; font-weight: 500; color: var(--dim);
+    cursor: pointer; display: flex; align-items: center; gap: 7px;
+    transition: border-color 0.12s, color 0.12s;
+  }
+  .hist-pill:hover { border-color: var(--silver); color: var(--text); }
+  .hist-pill.active { border-color: var(--silver); color: var(--silver); background: var(--silver-dim); }
+  .hist-del { color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; transition: color 0.12s; }
+  .hist-del:hover { color: var(--red); }
+
+  .body { max-width: 640px; margin: 0 auto; padding: 0 24px 48px; }
+
+  .summary-strip { display: flex; margin: 24px 0 26px; border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+  .strip-cell { flex: 1; padding: 14px 10px; text-align: center; border-right: 1px solid var(--border); }
+  .strip-cell:last-child { border-right: none; }
+  .strip-count { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 0.04em; line-height: 1; }
+  .strip-cell.sr { background: var(--red-dim); }
+  .strip-cell.sa { background: var(--amber-dim); }
+  .strip-cell.sg { background: var(--green-dim); }
+  .strip-cell.sr .strip-count { color: var(--red); }
+  .strip-cell.sa .strip-count { color: var(--amber); }
+  .strip-cell.sg .strip-count { color: #3da066; }
+  .strip-lbl { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+
+  .sec-lbl { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 9px; padding-left: 2px; }
+
+  .items { display: flex; flex-direction: column; gap: 6px; margin-bottom: 28px; }
+
+  .item {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--r);
+    padding: 13px 15px 11px;
+    display: grid; grid-template-columns: 1fr auto; align-items: start; gap: 0 12px;
+    position: relative; overflow: hidden;
+  }
+  .item::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+  .item.sr::before  { background: var(--red); }
+  .item.sa::before  { background: var(--amber); }
+  .item.sg::before  { background: #2d7d4f; }
+  .item.dim::before { background: var(--muted); }
+
+  .item-main { padding-left: 4px; }
+  .item-top { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+  .item-name { font-size: 14px; font-weight: 600; }
+  .item-chip { font-size: 9px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; }
+  .item.sr .item-chip  { background: var(--red-dim);   color: var(--red);   }
+  .item.sa .item-chip  { background: var(--amber-dim); color: var(--amber); }
+  .item.sg .item-chip  { background: var(--green-dim); color: #3da066;      }
+  .item.dim .item-chip { background: var(--raised);    color: var(--muted); }
+
+  .item-note { font-size: 11px; color: var(--muted); }
+
+  .done-btn {
+    margin-top: 9px; display: inline-flex; align-items: center; gap: 5px;
+    background: transparent; border: 1px solid var(--border); border-radius: 5px;
+    color: var(--muted); font-family: 'Inter', sans-serif;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
+    padding: 4px 9px; cursor: pointer; transition: border-color 0.12s, color 0.12s;
+    grid-column: 1 / -1;
+  }
+  .done-btn:hover { border-color: #2d7d4f; color: #3da066; }
+  .undo-btn {
+    margin-top: 9px; display: inline-flex; align-items: center; gap: 5px;
+    background: transparent; border: 1px solid var(--border); border-radius: 5px;
+    color: var(--muted); font-family: 'Inter', sans-serif;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
+    padding: 4px 9px; cursor: pointer; transition: border-color 0.12s, color 0.12s;
+    grid-column: 1 / -1;
+  }
+  .undo-btn:hover { border-color: var(--silver); color: var(--silver); }
+
+  .item-bar-track { height: 2px; background: var(--raised); border-radius: 1px; margin-top: 9px; overflow: hidden; grid-column: 1 / -1; }
+  .item-bar-fill { height: 100%; border-radius: 1px; transition: width 0.45s cubic-bezier(.4,0,.2,1); }
+  .item.sr  .item-bar-fill { background: var(--red); }
+  .item.sa  .item-bar-fill { background: var(--amber); }
+  .item.sg  .item-bar-fill { background: #2d7d4f; }
+  .item.dim .item-bar-fill { background: var(--muted); }
+
+  .item.dim { opacity: 0.4; }
+
+  .item-right { text-align: right; }
+  .item-val { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 0.04em; line-height: 1; }
+  .item.sr  .item-val { color: var(--red); }
+  .item.sa  .item-val { color: var(--amber); }
+  .item.sg  .item-val { color: #3da066; }
+  .item.dim .item-val { color: var(--muted); }
+  .item-sub { font-size: 10px; color: var(--muted); font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; margin-top: 1px; }
+
+  .empty { text-align: center; padding: 52px 0; color: var(--muted); }
+  .empty-odo { font-family: 'Bebas Neue', sans-serif; font-size: 52px; letter-spacing: 0.08em; color: #1c1e23; display: block; margin-bottom: 10px; }
+  .empty-text { font-size: 13px; line-height: 1.7; }
+
+  .footer-note { border-top: 1px solid var(--border); padding-top: 16px; font-size: 11px; color: var(--muted); line-height: 1.75; }
+  .footer-note strong { color: var(--dim); font-weight: 500; }
+
+  @media (max-width: 480px) {
+    .cluster-wrap { padding: 20px 16px; }
+    .odo-input { font-size: 48px; }
+    .body { padding: 0 16px 40px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="brand">
+    <span class="brand-model">XSR 155</span>
+    <span class="brand-tag">Maintenance</span>
+  </div>
+  <svg class="y-mark" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="46" stroke="#c8102e" stroke-width="5"/>
+    <path d="M50 18 L50 50 M50 50 L30 80 M50 50 L70 80" stroke="#c8102e" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M36 18 L50 42 L64 18" stroke="#c8102e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </svg>
+</div>
+
+<div class="cluster-wrap">
+  <div class="cluster-label">Current odometer</div>
+  <div class="cluster">
+    <div class="cluster-inner">
+      <div class="odo-wrap">
+        <input class="odo-input" type="number" id="kmInput" placeholder="00000" min="0">
+        <div class="odo-unit">Kilometres</div>
+      </div>
+      <div class="cluster-div"></div>
+      <button class="log-btn" onclick="saveKm()">Log</button>
+    </div>
+  </div>
+  <div class="hist-row" id="histRow"></div>
+</div>
+
+<div class="body">
+  <div id="results"></div>
+</div>
+
+<script>
+  const ITEMS = [
+    { id: 'chain-lube',  name: 'Chain Clean & Lube', min: 500,   max: 700,   note: 'Every 500–700 km' },
+    { id: 'engine-oil',  name: 'Engine Oil',          min: 4000,  max: 5000,  note: 'Every 4000–5000 km' },
+    { id: 'oil-filter',  name: 'Oil Filter',          min: 4000,  max: 5000,  note: 'Replace with every oil change' },
+    { id: 'air-filter',  name: 'Air Filter',          min: 4000,  max: 5000,  note: 'Every service interval' },
+    { id: 'brake-pads',  name: 'Brake Pads',          min: 5000,  max: 10000, note: 'Inspect every 5000–10000 km' },
+    { id: 'spark-plug',  name: 'Spark Plug',          min: 10000, max: 12000, note: 'Every 10000–12000 km' },
+    { id: 'brake-fluid', name: 'Brake Fluid',         min: 10000, max: 15000, note: 'Every 10000–15000 km' },
+    { id: 'fork-oil',    name: 'Fork Oil',            min: 10000, max: 15000, note: 'Every 10000–15000 km' },
+    { id: 'coolant',     name: 'Coolant',             min: 15000, max: 20000, note: 'Every 15000–20000 km' },
+    { id: 'chain-set',   name: 'Chain Set',           min: 15000, max: 23000, note: 'Replace at 15000–23000 km' },
+  ];
+
+  let history = [];
+  let dismissed = new Set();
+  let currentKm = null;
+
+  try { history = JSON.parse(localStorage.getItem('xsr155_km') || '[]'); } catch(e) {}
+  try { dismissed = new Set(JSON.parse(localStorage.getItem('xsr155_dismissed') || '[]')); } catch(e) {}
+  if (history.length) currentKm = history[history.length - 1];
+
+  function saveKm() {
+    const val = parseInt(document.getElementById('kmInput').value);
+    if (!val || val < 0) return;
+    if (!history.includes(val)) {
+      history.push(val);
+      history.sort((a, b) => a - b);
+      try { localStorage.setItem('xsr155_km', JSON.stringify(history)); } catch(e) {}
+    }
+    currentKm = val;
+    dismissed.clear();
+    try { localStorage.setItem('xsr155_dismissed', '[]'); } catch(e) {}
+    document.getElementById('kmInput').value = '';
+    render();
+  }
+
+  document.getElementById('kmInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveKm();
+  });
+
+  function delKm(km, e) {
+    e.stopPropagation();
+    history = history.filter(k => k !== km);
+    try { localStorage.setItem('xsr155_km', JSON.stringify(history)); } catch(e) {}
+    if (currentKm === km) currentKm = history.length ? history[history.length - 1] : null;
+    render();
+  }
+
+  function pickKm(km) { currentKm = km; render(); }
+
+  function markDone(id) {
+    dismissed.add(id);
+    try { localStorage.setItem('xsr155_dismissed', JSON.stringify([...dismissed])); } catch(e) {}
+    render();
+  }
+
+  function markUndone(id) {
+    dismissed.delete(id);
+    try { localStorage.setItem('xsr155_dismissed', JSON.stringify([...dismissed])); } catch(e) {}
+    render();
+  }
+
+  /*
+    REMINDER LOGIC — straightforward threshold check:
+    km >= item.max  → Overdue  (past the outer limit)
+    km >= item.min  → Due Now  (inside the service window — act now)
+    km >= item.min * 0.80  → Due Soon  (approaching, heads-up)
+    else            → Good
+
+    Bar: fills 0 → item.max, capped at 100%.
+    No modulo cycling. If you're at 1000 km and chain lube is 500–700, it's Due Now.
+  */
+  function assess(km, item) {
+    const progress = Math.min(Math.round((km / item.max) * 100), 100);
+    if (km >= item.max) {
+      const over = km - item.max;
+      return { cls: 'sr', label: 'Overdue', valText: over > 0 ? `+${over.toLocaleString()}` : 'Now', subText: over > 0 ? 'km over' : 'change now', progress: 100 };
+    }
+    if (km >= item.min) {
+      return { cls: 'sr', label: 'Due Now', valText: 'Now', subText: 'service window', progress };
+    }
+    if (km >= Math.round(item.min * 0.80)) {
+      const left = item.min - km;
+      return { cls: 'sa', label: 'Due Soon', valText: left.toLocaleString(), subText: 'km to go', progress };
+    }
+    const left = item.min - km;
+    return { cls: 'sg', label: 'Good', valText: left.toLocaleString(), subText: 'km to go', progress };
+  }
+
+  function render() {
+    document.getElementById('histRow').innerHTML = history.map(km => `
+      <div class="hist-pill ${km === currentKm ? 'active' : ''}" onclick="pickKm(${km})">
+        ${km.toLocaleString()} km
+        <span class="hist-del" onclick="delKm(${km}, event)">×</span>
+      </div>`).join('');
+
+    const res = document.getElementById('results');
+
+    if (!currentKm) {
+      res.innerHTML = `<div class="empty">
+        <span class="empty-odo">00000</span>
+        <div class="empty-text">Log your odometer reading above<br>to see what needs attention.</div>
+      </div>`;
+      return;
+    }
+
+    const assessed = ITEMS.map(item => ({
+      ...item, ...assess(currentKm, item), done: dismissed.has(item.id)
+    }));
+
+    const statusOrder = { sr: 0, sa: 1, sg: 2 };
+    assessed.sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      return statusOrder[a.cls] - statusOrder[b.cls];
+    });
+
+    const active  = assessed.filter(i => !i.done);
+    const overdue = active.filter(i => i.cls === 'sr');
+    const soon    = active.filter(i => i.cls === 'sa');
+    const good    = active.filter(i => i.cls === 'sg');
+
+    const itemsHTML = assessed.map(item => {
+      const actionBtn = item.done
+        ? `<button class="undo-btn" onclick="markUndone('${item.id}')">↩ Mark as pending</button>`
+        : (item.cls !== 'sg' ? `<button class="done-btn" onclick="markDone('${item.id}')">✓ Done — mark as serviced</button>` : '');
+
+      return `
+        <div class="item ${item.done ? 'dim' : item.cls}">
+          <div class="item-main">
+            <div class="item-top">
+              <span class="item-name">${item.name}</span>
+              <span class="item-chip">${item.done ? 'Done' : item.label}</span>
+            </div>
+            <div class="item-note">${item.note}</div>
+            ${actionBtn}
+          </div>
+          <div class="item-right">
+            <div class="item-val">${item.done ? '✓' : item.valText}</div>
+            <div class="item-sub">${item.done ? 'serviced' : item.subText}</div>
+          </div>
+          <div class="item-bar-track">
+            <div class="item-bar-fill" style="width:${item.done ? 100 : item.progress}%"></div>
+          </div>
+        </div>`;
+    }).join('');
+
+    res.innerHTML = `
+      <div class="summary-strip">
+        <div class="strip-cell sr"><div class="strip-count">${overdue.length}</div><div class="strip-lbl">Overdue</div></div>
+        <div class="strip-cell sa"><div class="strip-count">${soon.length}</div><div class="strip-lbl">Due Soon</div></div>
+        <div class="strip-cell sg"><div class="strip-count">${good.length}</div><div class="strip-lbl">Good</div></div>
+      </div>
+      <div class="sec-lbl">Service items — ${currentKm.toLocaleString()} km</div>
+      <div class="items">${itemsHTML}</div>
+      <div class="footer-note">
+        <strong>Logic:</strong> Items flag as Due Now when you hit the minimum km, Overdue past the maximum. Hit Done after servicing — clears automatically when you log a new reading.
+      </div>`;
+  }
+
+  render();
+</script>
+</body>
+</html>
